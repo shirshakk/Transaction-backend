@@ -15,13 +15,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.transaction.transaction_service.dao.ApiResponse;
 import com.transaction.transaction_service.dao.request.TopUpRequest;
 import com.transaction.transaction_service.dao.request.TransferRequest;
+import com.transaction.transaction_service.dao.request.WithdrawRequest;
 import com.transaction.transaction_service.dao.response.GetTransactionResponse;
 import com.transaction.transaction_service.service.TransactionService;
 
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 
 @RestController 
-@RequestMapping("/api/transaction")
+@RequestMapping("/api/transactions")
 @AllArgsConstructor 
 public class TransactionController {
     
@@ -57,5 +59,15 @@ public class TransactionController {
         List<GetTransactionResponse> allTransaction = transactionService.getAllTransaction(userID);
         return ResponseEntity.ok(ApiResponse.success("All Transaction",allTransaction));
         
+    }
+
+    @PostMapping("/withdraw")
+    public ResponseEntity<ApiResponse<String>> withdraw(
+        @AuthenticationPrincipal Jwt jwt,
+        @Valid @RequestBody WithdrawRequest request
+    ){
+        UUID userID = UUID.fromString(jwt.getSubject());
+        String message = transactionService.withdraw(userID,request);
+        return ResponseEntity.ok(ApiResponse.success(message, null));
     }
 }
