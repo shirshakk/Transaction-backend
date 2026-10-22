@@ -23,7 +23,7 @@ import jakarta.validation.Valid;
 
 
 @RestController 
-@RequestMapping ("/api")
+@RequestMapping ("/api/users")
  
 public class UserController {
 
