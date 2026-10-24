@@ -9,44 +9,43 @@ pipeline {
             }
         }
 
-        stage('Build Auth') {
+        stage('Build Auth Image') {
             steps {
-                dir('auth') {
-                    sh 'mvn clean package -DskipTests'
-                }
+                sh 'docker build -t digital-wallet-auth:latest ./auth'
             }
         }
 
-        stage('Build User Service') {
+        stage('Build User Service Image') {
             steps {
-                dir('user-service') {
-                    sh 'mvn clean package -DskipTests'
-                }
+                sh 'docker build -t digital-wallet-user-service:latest ./user-service'
             }
         }
 
-        stage('Build Wallet Service') {
+        stage('Build Wallet Service Image') {
             steps {
-                dir('wallete-service') {
-                    sh 'mvn clean package -DskipTests'
-                }
+                sh 'docker build -t digital-wallet-wallete-service:latest ./wallete-service'
             }
         }
 
-        stage('Build Transaction Service') {
+        stage('Build Transaction Service Image') {
             steps {
-                dir('transaction-service') {
-                    sh 'mvn clean package -DskipTests'
-                }
+                sh 'docker build -t digital-wallet-transaction-service:latest ./transaction-service'
             }
         }
 
-        stage('Build Gateway') {
+        stage('Build Gateway Image') {
             steps {
-                dir('gateway-service') {
-                    sh 'mvn clean package -DskipTests'
-                }
+                sh 'docker build -t digital-wallet-gateway-service:latest ./gateway-service'
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'All five Docker images built successfully.'
+        }
+        failure {
+            echo 'Docker image build failed. Check the stage logs.'
         }
     }
 }
