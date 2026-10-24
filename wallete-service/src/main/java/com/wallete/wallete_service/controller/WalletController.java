@@ -21,7 +21,7 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 
 @RestController 
-@RequestMapping("/api")
+@RequestMapping("/api/digital")
 @AllArgsConstructor 
 public class WalletController {
     

@@ -8,6 +8,7 @@ import com.transaction.transaction_service.Exception.CustomException;
 import com.transaction.transaction_service.dao.request.TopUpRequest;
 import com.transaction.transaction_service.dao.request.TransferEventRequest;
 import com.transaction.transaction_service.dao.request.TransferRequest;
+import com.transaction.transaction_service.dao.request.WithdrawRequest;
 import com.transaction.transaction_service.dao.response.GetTransactionResponse;
 import com.transaction.transaction_service.enums.ErrorCode;
 import com.transaction.transaction_service.enums.TransactionStatus;
@@ -40,7 +41,7 @@ public class TransactionService {
 
         transactionRepository.save(newTransaction);
         
-        eventService.userTopUp(newTransaction.getTransactionId(),userId, request.amount());
+        eventService.userTransfer(newTransaction.getTransactionId(),userId, request.amount(),TransactionType.TOPUP);
         return "Transaction recorded";
     }
 
@@ -85,6 +86,25 @@ public class TransactionService {
         eventService.transfer(eventTransferRequest);
         
         return "Transaction recorded";
+    }
+
+    public String withdraw(UUID userId,WithdrawRequest request){
+        if(request.amount().signum()<0){
+            throw new CustomException(ErrorCode.INVALID_AMOUNT);
+        }
+        Transaction newTransaction= new Transaction();
+        newTransaction.setAmount(request.amount());
+        newTransaction.setToWalletId(userId);
+        newTransaction.setTransactionType(TransactionType.WITHDRAWAL);
+        newTransaction.setTransactionStatus(TransactionStatus.PENDING);
+        newTransaction.setUserId(userId);
+
+        transactionRepository.save(newTransaction);
+
+        eventService.userTransfer(newTransaction.getTransactionId(),userId, request.amount(),TransactionType.WITHDRAWAL);
+
+        return "Transaction recorded";
+
     }
 
 }

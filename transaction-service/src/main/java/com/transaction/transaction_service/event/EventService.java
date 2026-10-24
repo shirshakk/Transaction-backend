@@ -11,6 +11,7 @@ import com.transaction.transaction_service.dao.request.TopUpEvent;
 import com.transaction.transaction_service.dao.request.TransferEventRequest;
 import com.transaction.transaction_service.dao.response.TopUpResponse;
 import com.transaction.transaction_service.enums.TransactionStatus;
+import com.transaction.transaction_service.enums.TransactionType;
 import com.transaction.transaction_service.service.UpdateTransaction;
 
 import tools.jackson.databind.ObjectMapper;
@@ -29,12 +30,12 @@ public class EventService {
         this.updateTransaction=updateTransaction;
     }
     
-    public void userTopUp(UUID transactionId,UUID userId,BigDecimal amount){
-        TopUpEvent topUP = new TopUpEvent(transactionId,userId,amount);
+    public void userTransfer(UUID transactionId,UUID userId,BigDecimal amount,TransactionType transactionType){
+        TopUpEvent topUP = new TopUpEvent(transactionId,userId,amount,transactionType);
         try {
             String eventJson = objectMapper.writeValueAsString(topUP);
             System.out.println("SENDING KAFKA MESSAGE: " + eventJson);
-            kafkaTemplate.send("Top-Up",eventJson)
+            kafkaTemplate.send("User-Transfer",eventJson)
             .whenComplete((result,exception)->{
                  if (exception != null) {
                             updateTransaction.transactionUpdate(transactionId, TransactionStatus.FAILED);

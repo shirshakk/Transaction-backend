@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.wallete.wallete_service.dao.request.WalletStatusRequest;
 import com.wallete.wallete_service.dao.response.WalletStatusResponse;
 import com.wallete.wallete_service.enums.ErrorCode;
+import com.wallete.wallete_service.enums.TransactionType;
 import com.wallete.wallete_service.enums.WalletStatus;
 import com.wallete.wallete_service.exception.CustomException;
 import com.wallete.wallete_service.model.Wallet;
@@ -47,15 +48,23 @@ public class WalletService {
     }
 
     @Transactional 
-    public void topUp(UUID userId,BigDecimal amount){
+    public void userTransfer(UUID userId,BigDecimal amount,TransactionType transactionType){
         Optional<Wallet> getUserWallet = walletRepository.findById(userId);
         Wallet userWallet=getUserWallet.get();
 
         if(userWallet.getStatus().equals(WalletStatus.INACTIVE)){
             throw new CustomException(ErrorCode.WALLET_UNAVAILABLE);
         }
-
-        userWallet.setBalance(userWallet.getBalance().add(amount));
+        if(transactionType.equals(TransactionType.TOPUP)){
+            userWallet.setBalance(userWallet.getBalance().add(amount));
+        }else if(transactionType.equals(TransactionType.WITHDRAWAL)){
+            if(userWallet.getBalance().compareTo(amount)>=0){
+                userWallet.setBalance(userWallet.getBalance().subtract(amount));
+            }else{
+                throw new CustomException(ErrorCode.INSUFFICIENT_BALANCE);
+            }
+        }
+        
         walletRepository.save(userWallet);
     }
 

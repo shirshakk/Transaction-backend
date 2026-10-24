@@ -11,6 +11,7 @@ import com.wallete.wallete_service.dao.request.TopUpEventRequest;
 import com.wallete.wallete_service.dao.request.TransferEventRequest;
 import com.wallete.wallete_service.dao.response.TopUpResponse;
 import com.wallete.wallete_service.enums.TransactionStatus;
+import com.wallete.wallete_service.enums.TransactionType;
 import com.wallete.wallete_service.enums.WalletStatus;
 import com.wallete.wallete_service.model.Wallet;
 import com.wallete.wallete_service.repository.WalletRepository;
@@ -46,7 +47,7 @@ public class EventService {
         walletRepository.save(newWallet);
     }
 
-    @KafkaListener(topics = "Top-Up")
+    @KafkaListener(topics = "User-Transfer")
     public void  UserTopUp(
         String message
     ){
@@ -55,10 +56,10 @@ public class EventService {
         UUID userId = userTopUp.userId();
         UUID transactionId=userTopUp.transactionId();
         BigDecimal amount = userTopUp.amount();
-        
+        TransactionType transactionType= userTopUp.transactionType();
         TopUpResponse result;
         try {
-            walletService.topUp(userId, amount);
+            walletService.userTransfer(userId, amount,transactionType);
             result = new TopUpResponse(transactionId,TransactionStatus.SUCCESS,"");
         } catch (Exception e) {
             result= new TopUpResponse(transactionId,TransactionStatus.FAILED,e.getMessage());
