@@ -23,6 +23,30 @@ services:
     networks:
       - wallet-network
 
+  postgres:
+    image: postgres:17
+    container_name: wallet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      AUTH_DB_NAME: ${AUTH_DB_NAME}
+      USER_DB_NAME: ${USER_DB_NAME}
+      WALLET_DB_NAME: ${WALLET_DB_NAME}
+      TRANSACTION_DB_NAME: ${TRANSACTION_DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wallet-network
+
   auth:
     build: ./auth
     container_name: wallet-auth
@@ -30,12 +54,15 @@ services:
       - "8081:8081"
     environment:
       SERVER_PORT: 8081
-      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/authentication
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${AUTH_DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
-      - kafka
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - wallet-network
 
@@ -46,12 +73,15 @@ services:
       - "8082:8082"
     environment:
       SERVER_PORT: 8082
-      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/${USER_DB_NAME}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${USER_DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
-      - kafka
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - wallet-network
 
@@ -62,12 +92,15 @@ services:
       - "8083:8083"
     environment:
       SERVER_PORT: 8083
-      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/${WALLET_DB_NAME}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${WALLET_DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
-      - kafka
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - wallet-network
 
@@ -78,12 +111,15 @@ services:
       - "8084:8084"
     environment:
       SERVER_PORT: 8084
-      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/transaction
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${TRANSACTION_DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
-      - kafka
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - wallet-network
 
@@ -108,3 +144,4 @@ networks:
 
 volumes:
   kafka_data:
+  postgres_data:
