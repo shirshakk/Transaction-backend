@@ -5,16 +5,47 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo 'Jenkins has checked out the Digital Wallet repository.'
-                sh 'pwd'
-                sh 'ls -la'
+                echo 'Source code checked out from GitHub.'
             }
         }
 
-        stage('Verify Java and Maven') {
+        stage('Build Auth') {
             steps {
-                sh 'java -version'
-                sh 'mvn -version'
+                dir('auth') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('Build User Service') {
+            steps {
+                dir('user-service') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('Build Wallet Service') {
+            steps {
+                dir('wallete-service') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('Build Transaction Service') {
+            steps {
+                dir('transaction-service') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+
+        stage('Build Gateway') {
+            steps {
+                dir('gateway-service') {
+                    sh 'mvn clean package -DskipTests'
+                }
             }
         }
     }
