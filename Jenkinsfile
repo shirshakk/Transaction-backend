@@ -1,6 +1,19 @@
-
 pipeline {
     agent any
+
+    parameters {
+        choice(
+            name: 'SERVICE',
+            choices: [
+                'auth',
+                'user-service',
+                'wallete-service',
+                'transaction-service',
+                'gateway-service'
+            ],
+            description: 'Select one microservice to build and push to ECR'
+        )
+    }
 
     environment {
         AWS_REGION = 'ap-south-1'
@@ -9,75 +22,77 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+        stage('Build Selected Image') {
             steps {
-                echo 'Source code checked out from GitHub.'
+                script {
+                    def services = [
+                        'auth': [
+                            context: './auth',
+                            image: 'digital-wallet-auth',
+                            repository: 'waller/auth-service'
+                        ],
+                        'user-service': [
+                            context: './user-service',
+                            image: 'digital-wallet-user-service',
+                            repository: 'wallet/user-service'
+                        ],
+                        'wallete-service': [
+                            context: './wallete-service',
+                            image: 'digital-wallet-wallete-service',
+                            repository: 'wallet/wallete-service'
+                        ],
+                        'transaction-service': [
+                            context: './transaction-service',
+                            image: 'digital-wallet-transaction-service',
+                            repository: 'wallet/transaction-service'
+                        ],
+                        'gateway-service': [
+                            context: './gateway-service',
+                            image: 'digital-wallet-gateway-service',
+                            repository: 'wallet/api-gateway'
+                        ]
+                    ]
+
+                    def service = services[params.SERVICE]
+
+                    sh "docker build -t ${service.image}:latest ${service.context}"
+
+                    sh """
+                        docker tag ${service.image}:latest \
+                        ${ECR_REGISTRY}/${service.repository}:latest
+                    """
+                }
             }
         }
 
-        stage('Build Docker Images') {
+        stage('Login to ECR and Push') {
             steps {
                 sh '''
-                    docker build -t digital-wallet-auth:latest ./auth
-                    docker build -t digital-wallet-user-service:latest ./user-service
-                    docker build -t digital-wallet-wallete-service:latest ./wallete-service
-                    docker build -t digital-wallet-transaction-service:latest ./transaction-service
-                    docker build -t digital-wallet-gateway-service:latest ./gateway-service
+                    aws ecr get-login-password --region "$AWS_REGION" |
+                    docker login --username AWS --password-stdin "$ECR_REGISTRY"
                 '''
-            }
-        }
 
-        stage('Login to Amazon ECR') {
-            steps {
-                sh '''
-                    aws ecr get-login-password --region "$AWS_REGION" \
-                    | docker login \
-                        --username AWS \
-                        --password-stdin "$ECR_REGISTRY"
-                '''
-            }
-        }
+                script {
+                    def repositories = [
+                        'auth': 'waller/auth-service',
+                        'user-service': 'wallet/user-service',
+                        'wallete-service': 'wallet/wallete-service',
+                        'transaction-service': 'wallet/transaction-service',
+                        'gateway-service': 'wallet/api-gateway'
+                    ]
 
-        stage('Tag Docker Images') {
-            steps {
-                sh '''
-                    docker tag digital-wallet-auth:latest \
-                        "$ECR_REGISTRY/waller/auth-service:latest"
-
-                    docker tag digital-wallet-user-service:latest \
-                        "$ECR_REGISTRY/wallet/user-service:latest"
-
-                    docker tag digital-wallet-wallete-service:latest \
-                        "$ECR_REGISTRY/wallet/wallete-service:latest"
-
-                    docker tag digital-wallet-transaction-service:latest \
-                        "$ECR_REGISTRY/wallet/transaction-service:latest"
-
-                    docker tag digital-wallet-gateway-service:latest \
-                        "$ECR_REGISTRY/wallet/api-gateway:latest"
-                '''
-            }
-        }
-
-        stage('Push Images to ECR') {
-            steps {
-                sh '''
-                    docker push "$ECR_REGISTRY/waller/auth-service:latest"
-                    docker push "$ECR_REGISTRY/wallet/user-service:latest"
-                    docker push "$ECR_REGISTRY/wallet/wallete-service:latest"
-                    docker push "$ECR_REGISTRY/wallet/transaction-service:latest"
-                    docker push "$ECR_REGISTRY/wallet/api-gateway:latest"
-                '''
+                    sh "docker push ${ECR_REGISTRY}/${repositories[params.SERVICE]}:latest"
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'All five Docker images were built and pushed to Amazon ECR.'
+            echo "Successfully built and pushed ${params.SERVICE} to ECR."
         }
         failure {
-            echo 'Pipeline failed. Check the Jenkins stage logs.'
+            echo "Build or push failed for ${params.SERVICE}. Check Console Output."
         }
         always {
             sh 'docker logout "$ECR_REGISTRY" || true'
